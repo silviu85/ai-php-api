@@ -1,3 +1,9 @@
-#ai-php-api
-I'm building an Backend app that can be used to connect to AI models.
-I'm using laravel as a backend provider.
+# ai-php-api
+
+A Laravel API gateway for multiple AI services, including Gemini, OpenAI  and Claude.
+
+### Gemini is working
+
+### OpenAi work in progress
+
+### Claude not started yet.
