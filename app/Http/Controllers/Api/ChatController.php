@@ -17,29 +17,37 @@ class ChatController extends Controller
         $this->conversationService = $conversationService;
     }
 
-    public function conversation(Request $request)
-    {
-        $validated = $request->validate([
-            'prompt' => 'required|string|min:1|max:4000',
-            'conversation_id' => 'nullable|integer|exists:conversations,id',
-        ]);
+   public function conversation(Request $request, ConversationService $conversationService)
+{
+    $validated = $request->validate([
+        'prompt' => 'required|string|min:1|max:4000',
+        'conversation_id' => 'nullable|integer|exists:conversations,id',
+    ]);
 
-        $user = $request->user();
+    $user = $request->user();
 
-        // Find or create the conversation.
-        $conversation = $validated['conversation_id']
-            ? $user->conversations()->findOrFail($validated['conversation_id'])
-            : $user->conversations()->create(['title' => 'New Chat']);
+    
+    $conversationId = $validated['conversation_id'] ?? null;
+    // -----------------------------
 
-        // Delegate all the complex logic to the service.
-        $aiResponseContent = $this->conversationService->processMessage(
-            $conversation,
-            $validated['prompt']
-        );
-
-        return response()->json([
-            'response' => $aiResponseContent,
-            'conversation_id' => $conversation->id,
-        ]);
+    
+    if ($conversationId) {
+        // IMPORTANT: Security check to ensure the user owns this conversation
+        $conversation = $user->conversations()->findOrFail($conversationId);
+    } else {
+        
+        $conversation = $user->conversations()->create([]);
     }
+
+    // Delegate all the complex logic to the service.
+    $aiResponseContent = $this->conversationService->processMessage(
+        $conversation,
+        $validated['prompt']
+    );
+
+    return response()->json([
+        'response' => $aiResponseContent,
+        'conversation_id' => $conversation->id, // ALWAYS return the ID
+    ]);
+}
 }

@@ -5,6 +5,8 @@ namespace App\Services;
 
 use App\Models\Conversation;
 use App\Services\Ai\AiServiceInterface;
+use Illuminate\Support\Str;
+
 
 class ConversationService
 {
@@ -24,6 +26,12 @@ class ConversationService
      */
     public function processMessage(Conversation $conversation, string $prompt): string
     {
+
+          if (is_null($conversation->title) && $conversation->messages()->count() === 0) {
+            $conversation->title = Str::limit($prompt, 250);
+            $conversation->save();
+        }
+
         // 1. Save the user's new message.
         $conversation->messages()->create(['role' => 'user', 'content' => $prompt]);
 
