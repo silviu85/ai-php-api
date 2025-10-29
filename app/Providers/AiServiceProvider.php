@@ -5,11 +5,11 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use App\Services\Ai\AiServiceInterface;
+use App\Services\SettingsService;
 use App\Services\Ai\ChatGptService;
 use App\Services\Ai\GeminiService;
 // Don't forget to import other services like ClaudeAiService
 use App\Models\Setting; // We will use a Setting model later
-use Illuminate\Support\Facades\Schema;
 
 class AiServiceProvider extends ServiceProvider
 {
@@ -18,29 +18,23 @@ class AiServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // We use a singleton because we don't need to create the service object more than once per request.
-        $this->app->singleton(AiServiceInterface::class, function ($app) {
-            
-            // Here you would fetch the setting from the database.
-            // For now, we fall back to the config file if the database/table doesn't exist yet.
-            $serviceName = config('ai.active_service');
-            if (Schema::hasTable('settings')) {
-                $setting = Setting::where('key', 'active_ai_service')->first();
-                if ($setting) {
-                    $serviceName = $setting->value;
-                }
-            }
+        // First, register our SettingsService as a singleton.
+        $this->app->singleton(SettingsService::class, fn() => new SettingsService());
 
-            switch ($serviceName) {
+        $this->app->singleton(AiServiceInterface::class, function ($app) {
+            // Get the current settings from our new service.
+            $settings = $app->make(SettingsService::class)->getAiSettings();
+            
+            switch ($settings->provider) {
                 case 'gemini':
                     $apiKey = config('ai.services.gemini.key');
                     return new GeminiService($apiKey);
+                // case 'claude':
+                //     return new ClaudeAiService(...);
                 case 'chatgpt':
-                default: // Fallback to chatgpt if the setting is invalid
+                default:
                     $apiKey = config('ai.services.chatgpt.key');
                     return new ChatGptService($apiKey);
-                // case 'claude':
-                //     return new ClaudeAiService(config('ai.services.claude.key'));
             }
         });
     }

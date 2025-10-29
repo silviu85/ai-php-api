@@ -6,6 +6,7 @@ namespace App\Services;
 use App\Models\Conversation;
 use App\Services\Ai\AiServiceInterface;
 use Illuminate\Support\Str;
+use App\Data\AiSettings;
 
 
 class ConversationService
@@ -24,7 +25,7 @@ class ConversationService
      * Main method to process a user's prompt within a conversation.
      * It handles the logic for summarization when the threshold is reached.
      */
-    public function processMessage(Conversation $conversation, string $prompt): string
+    public function processMessage(Conversation $conversation, string $prompt, AiSettings $settings): string
     {
 
           if (is_null($conversation->title) && $conversation->messages()->count() === 0) {
@@ -48,7 +49,7 @@ class ConversationService
         $context = $this->buildContext($conversation);
         
         // 4. Get the AI's response based on the (potentially summarized) context.
-        $aiResponseContent = $this->aiService->ask($context);
+       $aiResponseContent = $this->aiService->ask($context, $settings);
 
         // 5. Save the AI's response.
         $conversation->messages()->create(['role' => 'assistant', 'content' => $aiResponseContent]);

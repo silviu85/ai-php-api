@@ -3,6 +3,7 @@
 
 namespace App\Services\Ai;
 
+use App\Data\AiSettings;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Arr;
@@ -18,9 +19,24 @@ class GeminiService implements AiServiceInterface
         $this->apiKey = $apiKey;
     }
     
-    public function ask(array $messages): string
+    public function ask(array $messages, AiSettings $settings): string
     {
-        $geminiContents = [];
+
+        list($systemInstruction, $geminiContents) = $this->preparePayload($messages, $settings);
+
+        $payload = [
+            'contents' => $geminiContents,
+            'generation_config' => [
+                'temperature' => $settings->temperature,
+                'maxOutputTokens' => $settings->maxTokens,
+            ],
+        ];
+
+        if ($systemInstruction) {
+            $payload['system_instruction'] = $systemInstruction;
+        }
+
+
         $systemSummary = null;
 
         // First, extract the system summary, if it exists
@@ -64,5 +80,31 @@ class GeminiService implements AiServiceInterface
             report($e);
             return 'Error communicating with the Gemini API: ' . $e->getMessage();
         }
+    }
+     private function preparePayload(array $messages, AiSettings $settings): array
+    {
+        $geminiContents = [];
+        $systemContent = $settings->systemPrompt; // Start with the global system prompt.
+
+        // Check if there's a more specific summary from the conversation.
+        foreach ($messages as $message) {
+            if ($message['role'] === 'system') {
+                $systemContent = $settings->systemPrompt . "\n\nConversation Summary: " . $message['content'];
+                break;
+            }
+        }
+
+        $systemInstruction = $systemContent ? ['role' => 'user', 'parts' => [['text' => $systemContent]]] : null;
+        
+        foreach ($messages as $message) {
+            if (in_array($message['role'], ['user', 'assistant'])) {
+                $geminiContents[] = [
+                    'role' => $message['role'] === 'assistant' ? 'model' : 'user',
+                    'parts' => [['text' => $message['content']]]
+                ];
+            }
+        }
+        
+        return [$systemInstruction, $geminiContents];
     }
 }
