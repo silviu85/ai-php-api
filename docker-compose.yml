@@ -1,0 +1,58 @@
+# File: ai-php-api/docker-compose.yml (Corrected Version)
+
+services:
+  # --- Laravel Backend Service ---
+  ai-php-api:
+    build:
+      context: .
+    container_name: ai_php_api
+    volumes:
+      - .:/var/www
+      - /var/www/vendor
+    networks:
+      - ai-network
+    depends_on:
+      ai-mariadb-db: # The name of the service this depends on.
+        condition: service_healthy # Wait for the healthcheck to pass.
+
+  # --- MariaDB Database Service ---
+  ai-mariadb-db:
+    image: mariadb:10.6
+    container_name: ai-mariadb-db
+    restart: unless-stopped
+    healthcheck:
+      # This command checks if the database is ready to accept connections.
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "${DB_USERNAME}",
+          "-p${DB_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - ai-network
+
+# --- Docker Networks ---
+networks:
+  ai-network:
+    name: ai-shared-network
+    driver: bridge
+
+# --- Docker Volumes ---
+volumes:
+  db-data:
+    driver: local
