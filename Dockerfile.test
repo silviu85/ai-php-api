@@ -1,0 +1,42 @@
+# File: ai-php-api/Dockerfile.test (Optimized for Speed and Correctness)
+
+# Start from the same official base image for consistency.
+FROM php:8.3-fpm-alpine
+
+# Set the working directory inside the container.
+WORKDIR /var/www
+
+# Install system dependencies and PHP extensions.
+RUN apk add --no-cache \
+    curl \
+    libpng-dev \
+    libzip-dev \
+    unzip \
+    zip \
+    && docker-php-ext-install pdo pdo_mysql bcmath zip
+
+# Get the latest version of Composer.
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# --- OPTIMIZED INSTALLATION PROCESS ---
+
+# 1. Copy composer files first to leverage Docker's layer caching.
+COPY composer.json composer.lock ./
+
+# 2. Install dependencies WITHOUT running scripts.
+# This is the slow part that we want to cache.
+# The --no-scripts flag prevents the 'artisan' error.
+RUN composer install --optimize-autoloader --no-scripts
+
+# 3. Now, copy the rest of the application source code.
+# This layer will be rebuilt frequently, but it's very fast.
+COPY . .
+
+# 4. Manually run the scripts that were skipped earlier.
+# This is fast and happens after all files are present.
+RUN composer run-script post-autoload-dump
+
+# --- END OPTIMIZED PROCESS ---
+
+# Set the correct permissions for Laravel's storage and cache directories.
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache

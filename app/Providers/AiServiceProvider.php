@@ -24,7 +24,7 @@ class AiServiceProvider extends ServiceProvider
         $this->app->singleton(AiServiceInterface::class, function ($app) {
             // Get the current settings from our new service.
             $settings = $app->make(SettingsService::class)->getAiSettings();
-            
+
             switch ($settings->provider) {
                 case 'gemini':
                     $apiKey = config('ai.services.gemini.key');

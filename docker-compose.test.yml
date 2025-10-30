@@ -1,0 +1,46 @@
+# File: ai-php-api/docker-compose.test.yml
+
+services:
+  # This is the service that will run the tests.
+  app-tester:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: ai_php_api_tester
+    # We mount the code for real-time changes.
+    volumes:
+      - .:/var/www
+      - /var/www/vendor
+    networks:
+      - ai-test-network
+    depends_on:
+      db-tester:
+        condition: service_healthy
+    # Copy the testing environment file into the container.
+    env_file: .env.test
+
+  # This is the dedicated, temporary database for testing.
+  db-tester:
+    image: mariadb:10.6
+    container_name: ai_db_tester
+    # Important: Use a different port to avoid conflicts with the dev database.
+    ports:
+      - "3307:3306"  # Changed host port to 3307 and container port to 3306
+    networks:
+      - ai-test-network
+    healthcheck:
+      # We use the 'root' user and its password for the healthcheck,
+      # as this user is guaranteed to exist after the initial setup.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+
+networks:
+  ai-test-network:
+    driver: bridge

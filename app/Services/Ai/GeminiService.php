@@ -1,5 +1,5 @@
 <?php
-// File: app/Services/Ai/GeminiService.php (Versiunea Finală și Completă)
+// File: app/services/Ai/GeminiService.php
 
 namespace App\Services\Ai;
 
@@ -11,17 +11,16 @@ use Illuminate\Support\Arr;
 class GeminiService implements AiServiceInterface
 {
     protected string $apiKey;
-    protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
-
+    protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-latest:generateContent';
 
     public function __construct(string $apiKey)
     {
         $this->apiKey = $apiKey;
     }
-    
+
     public function ask(array $messages, AiSettings $settings): string
     {
-
+        // We rely entirely on the preparePayload method for logic.
         list($systemInstruction, $geminiContents) = $this->preparePayload($messages, $settings);
 
         $payload = [
@@ -36,57 +35,21 @@ class GeminiService implements AiServiceInterface
             $payload['system_instruction'] = $systemInstruction;
         }
 
-
-        $systemSummary = null;
-
-        // First, extract the system summary, if it exists
-        foreach ($messages as $message) {
-            if ($message['role'] === 'system') {
-                $systemSummary = $message['content'];
-                break;
-            }
-        }
-
-        $isFirstUserMessage = true;
-        foreach ($messages as $message) {
-            if (in_array($message['role'], ['user', 'assistant'])) {
-                $role = ($message['role'] === 'assistant') ? 'model' : 'user';
-                $content = $message['content'];
-
-                // If a summary exists and this is the first user message, prepend the summary
-                if ($systemSummary && $role === 'user' && $isFirstUserMessage) {
-                    $content = "Here is a summary of our conversation so far: '{$systemSummary}'. Now, please respond to my next prompt: '{$content}'";
-                    $isFirstUserMessage = false;
-                }
-
-                 $geminiContents[] = [
-                    'role' => $role,
-                    'parts' => [['text' => $content]]
-                ];
-            }
-        }
-
         try {
-
-            $response = Http::post($this->apiUrl . '?key=' . $this->apiKey, [
-                'contents' => $geminiContents
-            ]);
-
+            $response = Http::timeout(60)->post($this->apiUrl . '?key=' . $this->apiKey, $payload);
             $response->throw();
-            
             return Arr::get($response->json(), 'candidates.0.content.parts.0.text') ?? 'Sorry, I could not get a response from Gemini.';
-
         } catch (RequestException $e) {
             report($e);
             return 'Error communicating with the Gemini API: ' . $e->getMessage();
         }
     }
-     private function preparePayload(array $messages, AiSettings $settings): array
+
+    private function preparePayload(array $messages, AiSettings $settings): array
     {
         $geminiContents = [];
-        $systemContent = $settings->systemPrompt; // Start with the global system prompt.
+        $systemContent = $settings->systemPrompt;
 
-        // Check if there's a more specific summary from the conversation.
         foreach ($messages as $message) {
             if ($message['role'] === 'system') {
                 $systemContent = $settings->systemPrompt . "\n\nConversation Summary: " . $message['content'];
@@ -95,7 +58,7 @@ class GeminiService implements AiServiceInterface
         }
 
         $systemInstruction = $systemContent ? ['role' => 'user', 'parts' => [['text' => $systemContent]]] : null;
-        
+
         foreach ($messages as $message) {
             if (in_array($message['role'], ['user', 'assistant'])) {
                 $geminiContents[] = [
@@ -104,7 +67,7 @@ class GeminiService implements AiServiceInterface
                 ];
             }
         }
-        
+
         return [$systemInstruction, $geminiContents];
     }
 }

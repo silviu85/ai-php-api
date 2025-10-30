@@ -1,18 +1,16 @@
 <?php
+// File: app/services/Ai/ChatGptService.php
 
 namespace App\Services\Ai;
 
 use App\Data\AiSettings;
-use OpenAI;
 use OpenAI\Client;
+use OpenAI;
 
 class ChatGptService implements AiServiceInterface
 {
     protected Client $client;
 
-    /**
-     * The constructor receives the OpenAI API key.
-     */
     public function __construct(string $apiKey)
     {
         $this->client = OpenAI::client($apiKey);
@@ -20,34 +18,33 @@ class ChatGptService implements AiServiceInterface
 
     /**
      * Implements the ask method for ChatGPT.
+     * This method now correctly accepts the AiSettings object.
      */
-public function ask(array $messages): string
-{
+    public function ask(array $messages, AiSettings $settings): string
+    {
         $payload = [
-            'model' => 'gpt-4o', // This could also be a setting
+            'model' => 'gpt-4o',
             'messages' => $this->prepareMessages($messages, $settings),
             'temperature' => $settings->temperature,
             'max_tokens' => $settings->maxTokens,
         ];
 
-    $response = $this->client->chat()->create($payload);
+        $response = $this->client->chat()->create($payload);
 
-    return $response->choices[0]->message->content ?? 'Error from ChatGPT.';
-}
- private function prepareMessages(array $messages, AiSettings $settings): array
+        return $response->choices[0]->message->content ?? 'Error from ChatGPT.';
+    }
+
+    private function prepareMessages(array $messages, AiSettings $settings): array
     {
         $preparedMessages = [];
         $systemPromptFound = false;
 
-        // Use the system prompt from the settings object first.
         if ($settings->systemPrompt) {
             $preparedMessages[] = ['role' => 'system', 'content' => $settings->systemPrompt];
             $systemPromptFound = true;
         }
 
         foreach ($messages as $message) {
-            // If there's a system message from conversation summary,
-            // and we haven't added the global one, add it.
             if ($message['role'] === 'system' && !$systemPromptFound) {
                 $preparedMessages[] = $message;
                 $systemPromptFound = true;
