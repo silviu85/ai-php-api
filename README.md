@@ -10,7 +10,7 @@ A Laravel API gateway for multiple AI services, including Gemini, OpenAI  and Cl
 
 ## Development Setup with Docker
 
-This project is configured to run in Docker using a performance-optimized setup for macOS and Windows. Due to the way Docker handles file synchronization with volumes, the `vendor` directory is excluded from the real-time sync to ensure high performance.
+This project is configured to run in Docker. Due to the way Docker handles file synchronization with volumes, the `vendor` directory is excluded from the real-time sync to ensure high performance.
 
 Follow these steps to get the development environment running:
 
@@ -28,8 +28,6 @@ First, you need to set up your local environment file.
 # Copy the example environment file
 cp .env.example .env
 ```
-### 2. Initial Setup
-
 Review the `.env` file and make sure the database credentials match the ones in the `docker-compose.yml` file. You also need to add your AI service API keys here.
 
 ### 2. Build and Start the Docker Services
@@ -76,4 +74,44 @@ docker-compose exec ai-php-api composer update
 # or
 docker-compose exec ai-php-api composer install
 ```
+## Running Automated Tests
 
+This project includes a fully containerized test suite that runs on an isolated MariaDB database, ensuring that your main development database is never affected.
+
+### Prerequisites
+
+- The development environment does not need to be running to execute the tests.
+
+### 1. Test Environment Setup
+
+The testing environment relies on its own environment file. Before running the tests for the first time, create a copy of the main `.env` file.
+
+```bash
+# This command creates the specific environment file for testing.
+cp .env .env.test
+```
+
+Review the `.env.test` file. The default database credentials are set up to work with the testing Docker Compose file, but you can adjust them if needed. Ensure that `DB_HOST` is set to `db-tester`.
+
+### 2. Executing the Test Suite
+
+We provide helper scripts to automate the entire process of building the test environment, running the tests, and cleaning up afterwards.
+
+**On Windows:**
+```bash
+run-tests.bat
+```
+
+**On Linux or macOS:**
+```bash
+# Make sure the script is executable first: chmod +x run-tests.sh
+./run-tests.sh
+```
+
+The script will perform the following actions:
+1.  Build and start dedicated `app-tester` and `db-tester` containers.
+2.  Wait for the database to be fully ready.
+3.  Execute the PHPUnit test suite inside the `app-tester` container.
+4.  Stop and remove all testing containers and volumes upon completion.
+
+The test results will be displayed directly in your terminal.
