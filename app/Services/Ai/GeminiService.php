@@ -11,63 +11,64 @@ use Illuminate\Support\Arr;
 class GeminiService implements AiServiceInterface
 {
     protected string $apiKey;
-    protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-latest:generateContent';
+    protected string $apiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
 
     public function __construct(string $apiKey)
     {
         $this->apiKey = $apiKey;
     }
 
-    public function ask(array $messages, AiSettings $settings): string
-    {
-        // We rely entirely on the preparePayload method for logic.
-        list($systemInstruction, $geminiContents) = $this->preparePayload($messages, $settings);
+  public function ask(array $messages, AiSettings $settings): string
+{
+    // Aici re-introducem logica ta originală, funcțională.
+    $geminiContents = [];
+    $systemContent = $settings->systemPrompt;
 
-        $payload = [
+    // Căutăm rezumatul din conversație
+    foreach ($messages as $message) {
+        if ($message['role'] === 'system') {
+            $systemContent .= "\n\nConversation Summary: " . $message['content'];
+            break;
+        }
+    }
+
+    $isFirstUserMessage = true;
+    foreach ($messages as $message) {
+        if (in_array($message['role'], ['user', 'assistant'])) {
+            $role = ($message['role'] === 'assistant') ? 'model' : 'user';
+            $content = $message['content'];
+
+            // Injecting System prompt in user first message
+            if ($systemContent && $role === 'user' && $isFirstUserMessage) {
+                $content = "IMPORTANT INSTRUCTIONS: '{$systemContent}'.\n\n--- My actual prompt ---\n{$content}";
+                $isFirstUserMessage = false;
+            }
+
+             $geminiContents[] = [
+                'role' => $role,
+                'parts' => [['text' => $content]]
+            ];
+        }
+    }
+
+    // Building payload for API
+    try {
+        $response = Http::timeout(60)->post($this->apiUrl . '?key=' . $this->apiKey, [
             'contents' => $geminiContents,
+            // Use settings from standardised object $settings
             'generation_config' => [
                 'temperature' => $settings->temperature,
                 'maxOutputTokens' => $settings->maxTokens,
             ],
-        ];
+        ]);
 
-        if ($systemInstruction) {
-            $payload['system_instruction'] = $systemInstruction;
-        }
+        $response->throw();
+        
+        return Arr::get($response->json(), 'candidates.0.content.parts.0.text') ?? 'Sorry, I could not get a response from Gemini.';
 
-        try {
-            $response = Http::timeout(60)->post($this->apiUrl . '?key=' . $this->apiKey, $payload);
-            $response->throw();
-            return Arr::get($response->json(), 'candidates.0.content.parts.0.text') ?? 'Sorry, I could not get a response from Gemini.';
-        } catch (RequestException $e) {
-            report($e);
-            return 'Error communicating with the Gemini API: ' . $e->getMessage();
-        }
+    } catch (RequestException $e) {
+        report($e);
+        return 'Error communicating with the Gemini API: ' . $e->getMessage();
     }
-
-    private function preparePayload(array $messages, AiSettings $settings): array
-    {
-        $geminiContents = [];
-        $systemContent = $settings->systemPrompt;
-
-        foreach ($messages as $message) {
-            if ($message['role'] === 'system') {
-                $systemContent = $settings->systemPrompt . "\n\nConversation Summary: " . $message['content'];
-                break;
-            }
-        }
-
-        $systemInstruction = $systemContent ? ['role' => 'user', 'parts' => [['text' => $systemContent]]] : null;
-
-        foreach ($messages as $message) {
-            if (in_array($message['role'], ['user', 'assistant'])) {
-                $geminiContents[] = [
-                    'role' => $message['role'] === 'assistant' ? 'model' : 'user',
-                    'parts' => [['text' => $message['content']]]
-                ];
-            }
-        }
-
-        return [$systemInstruction, $geminiContents];
-    }
+}
 }
