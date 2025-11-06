@@ -37,19 +37,24 @@ class AiServiceFactory
         switch ($provider) {
             case 'gemini':
                 $apiKey = $this->config->get('ai.services.gemini.key');
-                if (!$apiKey) throw new InvalidArgumentException("API key for Gemini is not configured.");
+                if (!$apiKey)
+                {
+                    throw new InvalidArgumentException("API key for Gemini is not configured.");
+                }
                 return new GeminiService($apiKey);
-            
+
             case 'chatgpt':
                 $apiKey = $this->config->get('ai.services.chatgpt.key');
-                if (!$apiKey) throw new InvalidArgumentException("API key for OpenAI is not configured.");
+                if (!$apiKey)
+                {
+                    throw new InvalidArgumentException("API key for OpenAI is not configured.");
+                }
                 return new ChatGptService($apiKey);
 
             // case 'claude':
             //     $apiKey = $this->config->get('ai.services.claude.key');
             //     if (!$apiKey) throw new InvalidArgumentException("API key for Claude is not configured.");
             //     return new ClaudeAiService($apiKey);
-            
             default:
                 throw new InvalidArgumentException("Unsupported AI provider requested: [{$provider}]");
         }
