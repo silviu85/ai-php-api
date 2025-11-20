@@ -33,7 +33,7 @@ class ChatController extends Controller
     ]);
         $user = $request->user();
         $conversationId = $validated['conversation_id'] ?? null;
-        
+
         if ($conversationId) {
             $conversation = $user->conversations()->findOrFail($conversationId);
         } else {

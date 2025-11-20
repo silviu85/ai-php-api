@@ -51,10 +51,13 @@ class AiServiceFactory
                 }
                 return new ChatGptService($apiKey);
 
-            // case 'claude':
-            //     $apiKey = $this->config->get('ai.services.claude.key');
-            //     if (!$apiKey) throw new InvalidArgumentException("API key for Claude is not configured.");
-            //     return new ClaudeAiService($apiKey);
+             case 'claude':
+                 $apiKey = $this->config->get('ai.services.claude.key');
+                 if (!$apiKey)
+                    {
+                        throw new InvalidArgumentException("API key for Claude (Anthropic) is not configured.");
+                    }
+                 return new ClaudeAiService($apiKey);
             default:
                 throw new InvalidArgumentException("Unsupported AI provider requested: [{$provider}]");
         }

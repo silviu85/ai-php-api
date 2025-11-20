@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // This is the new, correct place to register middleware aliases.
         $middleware->alias([
             'verify.frontend' => \App\Http\Middleware\VerifyFrontendApiKey::class,
+            'admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
