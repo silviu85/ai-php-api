@@ -15,7 +15,8 @@ RUN apk add --no-cache \
     zip \
     # Install necessary PHP extensions for Laravel
     && docker-php-ext-install pdo pdo_mysql bcmath zip
-
+# Copy custom php.ini configuration for development
+COPY docker/dev.ini /usr/local/etc/php/conf.d/99-dev-settings.in
 # Get the latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use App\Http\Resources\UserResource;
 
 class AuthController extends Controller
 {
@@ -30,7 +31,10 @@ class AuthController extends Controller
 
         $token = $user->createToken('api-token-on-register')->plainTextToken;
 
-        return response()->json(['user' => $user, 'token' => $token], 201);
+        return response()->json([
+            'user' => new UserResource($user),
+            'token' => $token
+        ], 201);
     }
 
     /**

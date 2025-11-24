@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConversationController;
+use App\Http\Controllers\Api\Admin\UserController;
+use App\Http\Controllers\Api\Admin\SettingsController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -31,4 +33,15 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
+    // User Management
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+    Route::post('/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
 
+    // Conversation Management
+    Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy'])->withTrashed(); // Allow deleting soft-deleted items
+    // Settings Management
+    Route::get('/settings', [SettingsController::class, 'show']);
+    Route::post('/settings', [SettingsController::class, 'update']);
+});

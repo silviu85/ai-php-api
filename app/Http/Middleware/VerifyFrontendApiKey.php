@@ -10,6 +10,7 @@ class VerifyFrontendApiKey
 {
     public function handle(Request $request, Closure $next): Response
     {
+
         // We expect the key to be in a custom header, e.g., 'X-Client-Key'
         $clientKey = $request->header('X-Client-Key');
         $serverKey = env('FRONTEND_API_KEY');
